@@ -1,4 +1,9 @@
-import { SpreadsheetComponent } from '@syncfusion/ej2-react-spreadsheet';
+import { SpreadsheetComponent, setCell, getCell, getRowHeight, getRangeIndexes } from '@syncfusion/ej2-react-spreadsheet';
+import { RadioButton } from '@syncfusion/ej2-buttons';
+import { select } from '@syncfusion/ej2-base';
+import { createCheckBox } from '@syncfusion/ej2-buttons';
+import { DropDownList } from '@syncfusion/ej2-dropdowns';
+
 import './App.css';
 
 export default function App() {
@@ -23,146 +28,183 @@ export default function App() {
   };
 
   const openComplete = () => {
-    var currRowIdx = { clientY: 40, isImage: true, isCheckDPR: true };
-    var currColIdx = { clientX: 191, isImage: true };
-    // Using proper string event names for notify method
-    spreadsheet.notify('getRowIdxFromClientY', currRowIdx);
-    spreadsheet.notify('getColIdxFromClientX', currColIdx);
-     
-    console.log(currRowIdx, currColIdx);
-    // addFormControls();
-    // console.log(getColumnIndex(191));
-    // console.log(getColumnWidth(spreadsheet.getActiveSheet(), 0, false, true));
+    addFormControls();
   }
 
   const addFormControls = () => {
-    // Check if jsonData exists and contains formControls
-    if (!jsonData || !jsonData.Workbook || !jsonData.Workbook.formControls) {
-      console.log("No form controls found in JSON data");
-      return;
+    if (jsonData || jsonData.Workbook || jsonData.Workbook.formControls) {
+      const formControls = jsonData.Workbook.formControls;
+
+      // Processing Checkboxes
+      if (formControls.checkboxCol) {
+        // Iterate through all checkboxes
+        Object.keys(formControls.checkboxCol).forEach(key => {
+          const checkbox = formControls.checkboxCol[key];
+          var rowIndex = { clientY: checkbox.Top, isImage: true, isCheckDPR: true };
+          var colIndex = { clientX: checkbox.Left, isImage: true };
+
+          spreadsheet.notify('getRowIdxFromClientY', rowIndex);
+          spreadsheet.notify('getColIdxFromClientX', colIndex);
+          var checkboxRowIndex = rowIndex.clientY;
+          var checkboxColIndex = colIndex.clientX;
+          var sheet: any = spreadsheet.sheets[checkbox.SheetIndex];
+          // util method - setCell(rowIndex: number, colIndex: number, sheet: sheet, cell: any, isExtend?: boolean): void
+          setCell(checkboxRowIndex, checkboxColIndex, sheet, { template: "checkbox", value: checkbox.Text, formControlType: "checkbox", checkboxInfo: checkbox } as any, true);
+          // console.log("Checkboxexs");
+          // console.log(checkboxRowIndex, checkboxColIndex, checkbox.SheetIndex);
+
+          const cellModel = getCell(checkboxRowIndex, checkboxColIndex, sheet);
+          const cellEle = spreadsheet.getCell(checkboxRowIndex, checkboxColIndex);
+          addCheckBox(cellEle, cellModel);
+
+        });
+      }
+
+      // Processing option Button
+      if (formControls.optionButtonCol) {
+        // Iterate through all optionButtons
+        Object.keys(formControls.optionButtonCol).forEach(key => {
+          const optionButton = formControls.optionButtonCol[key];
+          var rowIndex = { clientY: optionButton.Top, isImage: true, isCheckDPR: true };
+          var colIndex = { clientX: optionButton.Left, isImage: true };
+
+          spreadsheet.notify('getRowIdxFromClientY', rowIndex);
+          spreadsheet.notify('getColIdxFromClientX', colIndex);
+          var optionButtonRowIndex = rowIndex.clientY;
+          var optionButtonColIndex = colIndex.clientX;
+          var sheet: any = spreadsheet.sheets[optionButton.SheetIndex];
+          setCell(optionButtonRowIndex, optionButtonColIndex, sheet, { template: "optionButton", value: optionButton.Text, formControlType: "checkbox", optionButtonInfo: optionButton } as any, true);
+          // console.log("Option Button");
+          // console.log(optionButtonRowIndex, optionButtonColIndex);
+
+          const cellModel = getCell(optionButtonRowIndex, optionButtonColIndex, sheet);
+          const cellEle = spreadsheet.getCell(optionButtonRowIndex, optionButtonColIndex);
+
+          addOptionButton(cellEle, cellModel);
+          // if (getRowHeight(sheet, optionButtonRowIndex) < 25) {
+          // spreadsheet.setRowHeight(25, optionButtonRowIndex);
+          // }
+        });
+      }
+
+      // Processing Combo Box
+      if (formControls.comboBoxCol) {
+        // Iterate through all comboboxex
+        Object.keys(formControls.comboBoxCol).forEach(key => {
+          const comboBox = formControls.comboBoxCol[key];
+          var rowIndex = { clientY: comboBox.Top, isImage: true, isCheckDPR: true };
+          var colIndex = { clientX: comboBox.Left, isImage: true };
+
+          spreadsheet.notify('getRowIdxFromClientY', rowIndex);
+          spreadsheet.notify('getColIdxFromClientX', colIndex);
+          var comboBoxRowIndex = rowIndex.clientY;
+          var comboBoxColIndex = colIndex.clientX;
+          var sheet: any = spreadsheet.sheets[comboBox.SheetIndex];
+          setCell(comboBoxRowIndex, comboBoxColIndex, sheet, { template: "comboBox", formControlType: "comboBox", comboBoxInfo: comboBox } as any, true);
+          // console.log("Combo Box");
+          // console.log(comboBoxRowIndex, comboBoxColIndex);
+
+          const cellModel = getCell(comboBoxRowIndex, comboBoxColIndex, sheet);
+          const cellEle = spreadsheet.getCell(comboBoxRowIndex, comboBoxColIndex);
+
+          var comboBoxData: any = getRangeData(comboBox.ListFillRange, sheet);
+
+          addComboBox(cellEle, cellModel, comboBoxData);
+        });
+      }
+
     }
 
-    const formControls = jsonData.Workbook.formControls;
-    
-    // Check if checkboxCol exists
-    if (!formControls.checkboxCol) {
-      console.log("No checkbox controls found");
-      return;
+  }
+
+  // Helper method to get data from all the cells within the given range
+  const getRangeData = (dataRange: any, sheet: any) => {
+    var comboBoxData: any = [];
+    var cellRange = dataRange.split("!")[1];
+    var rangeIndexes = getRangeIndexes(cellRange, sheet);
+
+    for (var i = rangeIndexes[0]; i <= rangeIndexes[2]; i++) {
+      for (var j = rangeIndexes[1]; j <= rangeIndexes[3]; j++) {
+        var cell = getCell(i, j, sheet);
+        comboBoxData.push(cell?.value);
+      }
     }
+    return comboBoxData;
+  }
 
-    // Iterate through all checkboxes
-    Object.keys(formControls.checkboxCol).forEach(key => {
-      const checkbox = formControls.checkboxCol[key];
-      
-      // Get row and column indices based on top and left positions
-      const rowIndex = getRowIndex(checkbox.Top);
-      const colIndex = getColumnIndex(checkbox.Left);
-      
+  // To render the Radio button.
+  const addOptionButton = (element: any, cellModel: any) => {
+    element.innerHTML = '';
+    var inputEle = document.createElement('input');
+    element.appendChild(inputEle);
+    new RadioButton({
+      label: cellModel && cellModel.value ? cellModel.value : null,
+      checked: true,
+    }, inputEle);
+  }
 
-      
+  // To render the Check box.
+  const addCheckBox = (element: any, cellModel: any) => {
+    const sheet = spreadsheet.getActiveSheet();
+    const checked = !!cellModel?.value;
+
+    const checkboxWrapper = createCheckBox(
+      spreadsheet.createElement,
+      false,
+      {
+        checked,
+        label: cellModel.value,
+      }
+    );
+
+    element.appendChild(checkboxWrapper);
+
+    // For maintaining the checked state
+    checkboxWrapper.addEventListener('click', () => {
+      const input = select('.e-frame', checkboxWrapper);
+      const newChecked = !input.classList.contains('e-check');
+      if (newChecked) input.classList.add('e-check');
+      else input.classList.remove('e-check');
     });
-  }
-
-  const getRowHeight = (sheet: any, rowIndex: number, checkDPR?: boolean): number => {
-    let hgt: number;
-    let stdHeight: number | undefined;
-
-    // Try to get standard height from sheet
-    if (sheet && sheet.standardHeight) {
-      stdHeight = sheet.standardHeight;
-    }
-
-    // Check if row exists and has custom height
-    if (sheet && sheet.rows && sheet.rows[rowIndex]) {
-      // Return 0 for hidden rows
-      if (sheet.rows[rowIndex].hidden) {
-        return 0;
-      }
-      // Use custom height or fall back to standard height
-      hgt = sheet.rows[rowIndex].height === undefined ?
-        (stdHeight === undefined ? 20 : stdHeight) : sheet.rows[rowIndex].height;
-    } else {
-      // Use standard height if row doesn't exist
-      hgt = stdHeight === undefined ? 20 : stdHeight;
-    }
-
-    // Check DPR if requested
-    if (checkDPR && window.devicePixelRatio % 1 > 0) {
-      const pointValue: number = (hgt * window.devicePixelRatio) % 1;
-      return hgt + (pointValue ? ((pointValue > 0.5 ? (1 - pointValue) : -1 * pointValue) / window.devicePixelRatio) : 0);
-    } else {
-      return hgt;
-    }
   };
 
-  const getColumnWidth = (sheet: any, index: number, skipHidden?: boolean, checkDPR?: boolean): number => {
-    let width: number;
-    if (sheet && sheet.columns && sheet.columns[index]) {
-      if (!skipHidden && sheet.columns[index].hidden) { return 0; }
-      width = (sheet.columns[index].width || sheet.columns[index].customWidth) ?
-        sheet.columns[index].width : 64;
-    } else {
-      width = 64;
-    }
-    if (checkDPR && window.devicePixelRatio % 1 > 0) {
-      const pointValue: number = (width * window.devicePixelRatio) % 1;
-      return width + (pointValue ? ((pointValue > 0.5 ? (1 - pointValue) : -1 * pointValue) / window.devicePixelRatio) : 0);
-    } else {
-      return width;
-    }
+  // To render combo Box
+  const addComboBox = (element: any, cellModel: any, comboBoxData: any) => {
+    element.innerHTML = '';
+    var inputEle = document.createElement('input');
+    element.appendChild(inputEle);
+    console.log(cellModel.value);
+    new DropDownList({
+      placeholder: 'Select a value',
+      text: cellModel && cellModel.value ? cellModel.value : null,
+      dataSource: comboBoxData,
+      cssClass: 'e-dropdown-list',
+      value: cellModel && cellModel.value ? cellModel.value : null,
+      change: (event) => {
+        // dropDownChangeHandler(event);
+      }
+    }, inputEle);
   };
 
-  const getRowIndex = (topVal: number) => {
-    // Access the spreadsheet instance
-    if (!spreadsheet) return -1;
-
-    // Get the active sheet
-    const sheet: any = spreadsheet.getActiveSheet();
-
-    // Calculate row index based on top position
-    let height: number = 0;
-    for (let i: number = 0; ; i++) {
-      // Get row height for current row using our helper function with DPR checking
-      const rowHeight: number = getRowHeight(sheet, i, true);
-      height += rowHeight;
-
-      // Check if we've reached the target position
-      if (topVal < height || (sheet && sheet.rowCount && i === sheet.rowCount - 1)) {
-        return i;
+  const handleBeforeCellRender = (args: any) => {
+    // adding checkbox if the cell contains 'checkbox' template
+    if (args.element && args.cell?.template === 'checkbox') {
+      while (args.element.firstChild) {
+        args.element.removeChild(args.element.firstChild);
       }
-
-      // Safety check to prevent infinite loop
-      if (i > 10000) {
-        return -1;
-      }
+      args.element.textContent = "";
+      addCheckBox(args.element, args.cell);
+    } else if (args.element && args.cell && args.cell.template === 'comboBox') {
+      var sheet = spreadsheet.getActiveSheet();
+      args.element.textContent = "";
+      var comboBoxData = getRangeData(args.cell.comboBoxInfo.ListFillRange, sheet);
+      addComboBox(args.element, args.cell, comboBoxData);
+    } 
+    else if (args.element && args.cell && args.cell.template === 'optionButton') {
+      args.element.textContent = "";
+      addOptionButton(args.element, args.cell);
     }
-  }
-
-  const getColumnIndex = (leftVal: number) => {
-    // Access the spreadsheet instance
-    if (!spreadsheet) return -1;
-
-    // Get the active sheet
-    const sheet: any = spreadsheet.getActiveSheet();
-
-    // Calculate column index based on left position
-    let width: number = 0;
-    for (let i: number = 0; ; i++) {
-      // Get column width for current column using our helper function with DPR checking
-      const colWidth: number = getColumnWidth(sheet, i, false, true);
-      width += colWidth;
-
-      // Check if we've reached the target position
-      if (leftVal < width || (sheet && sheet.colCount && i === sheet.colCount - 1)) {
-        return i;
-      }
-
-      // Safety check to prevent infinite loop
-      if (i > 10000) {
-        return -1;
-      }
-    }
-  }
+  };
 
   return (
     <div className="app-container">
@@ -173,6 +215,7 @@ export default function App() {
         ref={(ssObj: any) => { spreadsheet = ssObj; }}
         created={onCreated}
         openComplete={openComplete}
+        beforeCellRender={handleBeforeCellRender}
         height='600px'
       >
       </SpreadsheetComponent>
