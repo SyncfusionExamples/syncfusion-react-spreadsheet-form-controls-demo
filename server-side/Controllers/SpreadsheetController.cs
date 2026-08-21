@@ -44,9 +44,9 @@ namespace WebAPI.Controllers
             IWorkbook workbook = excelEngine.Excel.Workbooks.Open(fileStream, ExcelOpenType.Automatic);
 
             // Check if worksheets have any checkboxes, optionButtons, combo boxes and store the information
-            List<CheckBoxInfo> allCheckBoxes = new List<CheckBoxInfo>();
-            List<OptionButtonInfo> allOptionButtons = new List<OptionButtonInfo>();
-            List<ComboBoxInfo> allComboBoxes = new List<ComboBoxInfo>();
+            List<CheckBoxShape> allCheckBoxes = new List<CheckBoxShape>();
+            List<OptionButtonShape> allOptionButtons = new List<OptionButtonShape>();
+            List<ComboBoxShape> allComboBoxes = new List<ComboBoxShape>();
             for (int i = 0; i < workbook.Worksheets.Count; i++)
             {
                 IWorksheet worksheet = workbook.Worksheets[i];
@@ -55,7 +55,7 @@ namespace WebAPI.Controllers
                 for (int j = 0; j < worksheet.CheckBoxes.Count; j++)
                 {
                     ICheckBoxShape checkBox = worksheet.CheckBoxes[j];
-                    CheckBoxInfo checkBoxInfo = new CheckBoxInfo
+                    CheckBoxShape CheckBoxShape = new CheckBoxShape
                     {
                         Top = (int)checkBox.Top,
                         Left = (int)checkBox.Left,
@@ -66,14 +66,14 @@ namespace WebAPI.Controllers
                         SheetIndex = i
                     };
 
-                    allCheckBoxes.Add(checkBoxInfo);
+                    allCheckBoxes.Add(CheckBoxShape);
                 }
                 
                 // Store information about each option button with all required properties
                 for (int j = 0; j < worksheet.OptionButtons.Count; j++)
                 {
                     IOptionButtonShape optionButton = worksheet.OptionButtons[j];
-                    OptionButtonInfo optionButtonInfo = new OptionButtonInfo
+                    OptionButtonShape OptionButtonShape = new OptionButtonShape
                     {
                         Top = (int)optionButton.Top,
                         Left = (int)optionButton.Left,
@@ -84,14 +84,14 @@ namespace WebAPI.Controllers
                         SheetIndex = i
                     };
 
-                    allOptionButtons.Add(optionButtonInfo);
+                    allOptionButtons.Add(OptionButtonShape);
                 }
                 
                 // Store information about each combo box with all required properties
                 for (int j = 0; j < worksheet.ComboBoxes.Count; j++)
                 {
                     IComboBoxShape comboBox = worksheet.ComboBoxes[j];
-                    ComboBoxInfo comboBoxInfo = new ComboBoxInfo
+                    ComboBoxShape ComboBoxShape = new ComboBoxShape
                     {
                         Top = (int)comboBox.Top,
                         Left = (int)comboBox.Left,
@@ -103,7 +103,7 @@ namespace WebAPI.Controllers
                         SheetIndex = i
                     };
 
-                    allComboBoxes.Add(comboBoxInfo);
+                    allComboBoxes.Add(ComboBoxShape);
                 }
             }
 
@@ -172,7 +172,7 @@ namespace WebAPI.Controllers
             public string FileName { get; set; } = string.Empty;
         }
 
-        public class CheckBoxInfo
+        public class CheckBoxShape
         {
             public int Top { get; set; }
             public int Left { get; set; }
@@ -183,7 +183,7 @@ namespace WebAPI.Controllers
             public int SheetIndex { get; set; }
         }
 
-        public class OptionButtonInfo
+        public class OptionButtonShape
         {
             public int Top { get; set; }
             public int Left { get; set; }
@@ -194,7 +194,7 @@ namespace WebAPI.Controllers
             public int SheetIndex { get; set; }
         }
 
-        public class ComboBoxInfo
+        public class ComboBoxShape
         {
             public int Top { get; set; }
             public int Left { get; set; }
@@ -208,8 +208,25 @@ namespace WebAPI.Controllers
 
         [HttpPost]
         [Route("Save")]
-        public IActionResult Save([FromForm] SaveSettings saveSettings)
+        public FileStreamResult Save([FromForm] SaveSettings saveSettings,
+                            [FromForm] Dictionary<string, string> formControls)
         {
+            ExcelEngine excelEngine = new ExcelEngine();
+            IApplication application = excelEngine.Excel;
+            var form = formControls;
+            Stream fileStream = Workbook.Save<Stream>(saveSettings);
+            IWorkbook workbook = excelEngine.Excel.Workbooks.Open(fileStream, ExcelOpenType.Automatic);
+
+
+
+            var saveType = saveSettings.SaveType.ToString().ToLower();
+            string basePath = _env.ContentRootPath + "\\Files\\" + saveSettings.FileName + '.' + saveType;
+            var file = System.IO.File.Create(basePath);
+            fileStream.Seek(0, SeekOrigin.Begin);
+            // To convert the stream to file options.
+            fileStream.CopyTo(file);
+            file.Dispose();
+            fileStream.Dispose();
             return Workbook.Save(saveSettings);
         }
     }

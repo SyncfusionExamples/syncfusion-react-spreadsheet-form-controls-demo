@@ -1,6 +1,6 @@
 import { SpreadsheetComponent, setCell, getCell, getRowHeight, getRangeIndexes } from '@syncfusion/ej2-react-spreadsheet';
 import { RadioButton } from '@syncfusion/ej2-buttons';
-import { select } from '@syncfusion/ej2-base';
+import { select, createElement } from '@syncfusion/ej2-base';
 import { createCheckBox } from '@syncfusion/ej2-buttons';
 import { DropDownList } from '@syncfusion/ej2-dropdowns';
 
@@ -9,6 +9,8 @@ import './App.css';
 export default function App() {
   let spreadsheet: any;
   var jsonData: any;
+  var workbookJson: any;
+  var formControls: any;
 
   const onCreated = () => {
     // Fetch call to server to load the Excel file.
@@ -26,6 +28,119 @@ export default function App() {
         spreadsheet.openFromJson({ file: data, triggerEvent: true });
       })
   };
+
+  const beforeSave = (args: any) => {
+    // console.log(args);
+  }
+
+  const performSave = () => {
+    spreadsheet.saveAsJson().then((res: any) => {
+      workbookJson = res.jsonObject.Workbook;
+      processWorkbookJson(workbookJson);
+      
+      var formData = new FormData();
+
+      // Add the JSON data to the formData object
+      formData.append(
+        "JSONData",
+        JSON.stringify(workbookJson)
+      );
+
+      // Specify the file name and save type as Excel (Xlsx)
+      formData.append("fileName", "Sample");
+      formData.append("saveType", "Xlsx");
+      
+      // Add form controls data - sending each collection separately for better server processing
+      formData.append("formControls[checkboxCol]", JSON.stringify(formControls.checkboxCol));
+      formData.append("formControls[optionButtonCol]", JSON.stringify(formControls.optionButtonCol));
+      formData.append("formControls[comboBoxCol]", JSON.stringify(formControls.comboBoxCol));
+      
+      // Add PDF layout settings, even though this is for Excel export
+      formData.append("pdfLayoutSettings", JSON.stringify({ fitSheetOnOnePage: false, orientation: "Portrait" }));
+
+      // Send a POST request to Syncfusion's save API
+      fetch(
+        'https://localhost:44341/api/spreadsheet/save',
+        {
+          method: 'POST',
+          body: formData,
+        }
+      ).then((response) => {
+        response.blob().then((data) => {
+          var anchor: any = createElement('a', {
+            attrs: { download: 'Sample.xlsx' },
+          });
+          var url = URL.createObjectURL(data);
+          anchor.href = url;
+          document.body.appendChild(anchor);
+          anchor.click();
+          URL.revokeObjectURL(url);
+          document.body.removeChild(anchor);
+        });
+      })
+    });
+  }
+
+  const processWorkbookJson = (workbook: any) => {
+    // Initialize formControls object
+    formControls = {
+      checkboxCol: [],
+      optionButtonCol: [],
+      comboBoxCol: []
+    };
+
+    if (workbook.sheets && Array.isArray(workbook.sheets)) {
+      workbook.sheets.forEach((sheet: any) => {
+        // Loop through each row
+        if (sheet.rows && Array.isArray(sheet.rows)) {
+          sheet.rows.forEach((row: any) => {
+            // Loop through each cell
+            if (row.cells && Array.isArray(row.cells)) {
+              row.cells.forEach((cell: any) => {
+                // Check if the cell has formControl property
+                if (cell.formControlType) {
+                  // Perform separate action based on the form control type
+                  switch (cell.formControlType) {
+                    case 'checkbox':
+                      // Add checkboxInfo to checkboxCol array
+                      if (cell.checkboxInfo) {
+                        formControls.checkboxCol.push(cell.checkboxInfo);
+                      }
+                      // Remove form control properties from the cell
+                      delete cell.formControlType;
+                      delete cell.checkboxInfo;
+                      delete cell.template;
+                      break;
+                    case 'optionbutton':
+                      // Add optionButtonInfo to optionButtonCol array
+                      if (cell.optionButtonInfo) {
+                        formControls.optionButtonCol.push(cell.optionButtonInfo);
+                      }
+                      // Remove form control properties from the cell
+                      delete cell.formControlType;
+                      delete cell.optionButtonInfo;
+                      delete cell.template;
+                      break;
+                    case 'comboBox':
+                      // Add comboBoxInfo to comboBoxCol array
+                      if (cell.comboBoxInfo) {
+                        formControls.comboBoxCol.push(cell.comboBoxInfo);
+                      }
+                      // Remove form control properties from the cell
+                      delete cell.formControlType;
+                      delete cell.comboBoxInfo;
+                      delete cell.template;
+                      break;
+                  }
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+    
+  }
 
   const openComplete = () => {
     addFormControls();
@@ -71,7 +186,7 @@ export default function App() {
           var optionButtonRowIndex = rowIndex.clientY;
           var optionButtonColIndex = colIndex.clientX;
           var sheet: any = spreadsheet.sheets[optionButton.SheetIndex];
-          setCell(optionButtonRowIndex, optionButtonColIndex, sheet, { template: "optionButton", value: optionButton.Text, formControlType: "checkbox", optionButtonInfo: optionButton } as any, true);
+          setCell(optionButtonRowIndex, optionButtonColIndex, sheet, { template: "optionButton", value: optionButton.Text, formControlType: "optionbutton", optionButtonInfo: optionButton } as any, true);
 
           const cellModel = getCell(optionButtonRowIndex, optionButtonColIndex, sheet);
           const cellEle = spreadsheet.getCell(optionButtonRowIndex, optionButtonColIndex);
@@ -130,6 +245,7 @@ export default function App() {
     element.appendChild(inputEle);
     new RadioButton({
       label: cellModel && cellModel.value ? cellModel.value : null,
+      name: "radioButton Col",
       checked: cellModel.optionButtonInfo.CheckState,
     }, inputEle);
   }
@@ -157,6 +273,12 @@ export default function App() {
       if (newChecked) input.classList.add('e-check');
       else input.classList.remove('e-check');
     });
+  }
+
+  // To handle the change event of dropdown list.
+  const dropDownChangeHandler = (event: any) => {
+    const sheet = spreadsheet.getActiveSheet();
+    spreadsheet.updateCell({ value: event.value.toString() }, sheet.activeCell);
   };
 
   // To render combo Box
@@ -168,12 +290,12 @@ export default function App() {
       text: cellModel && cellModel.value ? cellModel.value : null,
       dataSource: comboBoxData,
       cssClass: 'e-dropdown-list',
-      value: cellModel && cellModel.comboBoxInfo && cellModel.comboBoxInfo.SelectedIndex  ? comboBoxData[cellModel.comboBoxInfo.SelectedIndex - 1] : null,
+      value: cellModel && cellModel.comboBoxInfo && cellModel.comboBoxInfo.SelectedIndex ? comboBoxData[cellModel.comboBoxInfo.SelectedIndex - 1] : null,
       change: (event) => {
-        // dropDownChangeHandler(event);
+        dropDownChangeHandler(event);
       }
     }, inputEle);
-  };
+  }
 
   const handleBeforeCellRender = (args: any) => {
     // adding checkbox if the cell contains 'checkbox' template
@@ -193,11 +315,12 @@ export default function App() {
       args.element.textContent = "";
       addOptionButton(args.element, args.cell);
     }
-  };
+  }
 
   return (
     <div className="app-container">
       <h1 className="app-header">Spreadsheet Form Controls</h1>
+      <button className='btn' onClick={performSave}>Perform Save</button>
       <SpreadsheetComponent
         openUrl='https://localhost:44341/api/spreadsheet/open'
         saveUrl='https://localhost:44341/api/spreadsheet/save'
@@ -205,6 +328,7 @@ export default function App() {
         created={onCreated}
         openComplete={openComplete}
         beforeCellRender={handleBeforeCellRender}
+        beforeSave={beforeSave}
         height='600px'
       >
       </SpreadsheetComponent>
