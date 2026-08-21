@@ -50,8 +50,6 @@ export default function App() {
           var sheet: any = spreadsheet.sheets[checkbox.SheetIndex];
           // util method - setCell(rowIndex: number, colIndex: number, sheet: sheet, cell: any, isExtend?: boolean): void
           setCell(checkboxRowIndex, checkboxColIndex, sheet, { template: "checkbox", value: checkbox.Text, formControlType: "checkbox", checkboxInfo: checkbox } as any, true);
-          // console.log("Checkboxexs");
-          // console.log(checkboxRowIndex, checkboxColIndex, checkbox.SheetIndex);
 
           const cellModel = getCell(checkboxRowIndex, checkboxColIndex, sheet);
           const cellEle = spreadsheet.getCell(checkboxRowIndex, checkboxColIndex);
@@ -74,16 +72,11 @@ export default function App() {
           var optionButtonColIndex = colIndex.clientX;
           var sheet: any = spreadsheet.sheets[optionButton.SheetIndex];
           setCell(optionButtonRowIndex, optionButtonColIndex, sheet, { template: "optionButton", value: optionButton.Text, formControlType: "checkbox", optionButtonInfo: optionButton } as any, true);
-          // console.log("Option Button");
-          // console.log(optionButtonRowIndex, optionButtonColIndex);
 
           const cellModel = getCell(optionButtonRowIndex, optionButtonColIndex, sheet);
           const cellEle = spreadsheet.getCell(optionButtonRowIndex, optionButtonColIndex);
 
           addOptionButton(cellEle, cellModel);
-          // if (getRowHeight(sheet, optionButtonRowIndex) < 25) {
-          // spreadsheet.setRowHeight(25, optionButtonRowIndex);
-          // }
         });
       }
 
@@ -101,8 +94,6 @@ export default function App() {
           var comboBoxColIndex = colIndex.clientX;
           var sheet: any = spreadsheet.sheets[comboBox.SheetIndex];
           setCell(comboBoxRowIndex, comboBoxColIndex, sheet, { template: "comboBox", formControlType: "comboBox", comboBoxInfo: comboBox } as any, true);
-          // console.log("Combo Box");
-          // console.log(comboBoxRowIndex, comboBoxColIndex);
 
           const cellModel = getCell(comboBoxRowIndex, comboBoxColIndex, sheet);
           const cellEle = spreadsheet.getCell(comboBoxRowIndex, comboBoxColIndex);
@@ -139,14 +130,14 @@ export default function App() {
     element.appendChild(inputEle);
     new RadioButton({
       label: cellModel && cellModel.value ? cellModel.value : null,
-      checked: true,
+      checked: cellModel.optionButtonInfo.CheckState,
     }, inputEle);
   }
 
   // To render the Check box.
   const addCheckBox = (element: any, cellModel: any) => {
     const sheet = spreadsheet.getActiveSheet();
-    const checked = !!cellModel?.value;
+    const checked = !!cellModel?.checkboxInfo?.CheckState;
 
     const checkboxWrapper = createCheckBox(
       spreadsheet.createElement,
@@ -173,13 +164,11 @@ export default function App() {
     element.innerHTML = '';
     var inputEle = document.createElement('input');
     element.appendChild(inputEle);
-    console.log(cellModel.value);
     new DropDownList({
-      placeholder: 'Select a value',
       text: cellModel && cellModel.value ? cellModel.value : null,
       dataSource: comboBoxData,
       cssClass: 'e-dropdown-list',
-      value: cellModel && cellModel.value ? cellModel.value : null,
+      value: cellModel && cellModel.comboBoxInfo && cellModel.comboBoxInfo.SelectedIndex  ? comboBoxData[cellModel.comboBoxInfo.SelectedIndex - 1] : null,
       change: (event) => {
         // dropDownChangeHandler(event);
       }
@@ -199,7 +188,7 @@ export default function App() {
       args.element.textContent = "";
       var comboBoxData = getRangeData(args.cell.comboBoxInfo.ListFillRange, sheet);
       addComboBox(args.element, args.cell, comboBoxData);
-    } 
+    }
     else if (args.element && args.cell && args.cell.template === 'optionButton') {
       args.element.textContent = "";
       addOptionButton(args.element, args.cell);
