@@ -12,7 +12,8 @@ export default function App() {
   var workbookJson: any;
   var formControls: any;
 
-  const onCreated = () => {
+  const openExcel = () => {
+    spreadsheet.showSpinner();
     // Fetch call to server to load the Excel file.
     fetch('https://localhost:44341/api/spreadsheet/open', {
       method: 'POST',
@@ -27,6 +28,10 @@ export default function App() {
         jsonData = data;
         spreadsheet.openFromJson({ file: data, triggerEvent: true });
       })
+      spreadsheet.hideSpinner();
+  }
+  const onCreated = () => {
+    
   };
 
   const beforeSave = (args: any) => {
@@ -320,7 +325,7 @@ export default function App() {
   return (
     <div className="app-container">
       <h1 className="app-header">Spreadsheet Form Controls</h1>
-      <button className='btn' onClick={performSave}>Perform Save</button>
+      <button className='btn' onClick={openExcel}>Open Excel File</button>
       <SpreadsheetComponent
         openUrl='https://localhost:44341/api/spreadsheet/open'
         saveUrl='https://localhost:44341/api/spreadsheet/save'
