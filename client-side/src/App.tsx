@@ -1,6 +1,7 @@
-import { SpreadsheetComponent, setCell, getCell, getRangeIndexes } from '@syncfusion/ej2-react-spreadsheet';
+import { SpreadsheetComponent, setCell, getCell, getRangeIndexes, getSheetIndexFromAddress } from '@syncfusion/ej2-react-spreadsheet';
+import type { CellModel, SheetModel, BeforeSaveEventArgs } from '@syncfusion/ej2-spreadsheet';
 import { RadioButton } from '@syncfusion/ej2-buttons';
-import { select, createElement } from '@syncfusion/ej2-base';
+import { select, createElement, isNullOrUndefined, getUniqueID } from '@syncfusion/ej2-base';
 import { createCheckBox } from '@syncfusion/ej2-buttons';
 import { DropDownList } from '@syncfusion/ej2-dropdowns';
 
@@ -8,428 +9,270 @@ import './App.css';
 
 export default function App() {
   let spreadsheet: any;
-  var jsonData: any;
-  var workbookJson: any;
-  var formControls: any;
+  let isSaveJson: boolean;
 
-  const openExcel = () => {
-    spreadsheet.showSpinner();
-    // Fetch call to server to load the Excel file.
-    fetch('https://localhost:44341/api/spreadsheet/open', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ FileName: 'formControls' }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        // Load the JSON data into spreadsheet.
-        jsonData = data;
-        spreadsheet.openFromJson({ file: data, triggerEvent: true });
-      })
-      spreadsheet.hideSpinner();
+  const openCompleteHandler = (args: any) => {
+    const formControls = args.response.data && args.response.data.formControls;
+    if (formControls) {
+      updateFormControls(formControls);
+    }
+    // Updating formControl flag to retain during save action
+    spreadsheet.isFormControlsAdded = !!formControls;
   }
-  const onCreated = () => {
-    
+
+  const updateFormControls = (formControls: { checkBoxes?: object[], optionButtons?: object[], comboBoxes?: object[] }) => {
+    // Processing Checkboxes
+    if (formControls.checkBoxes) {
+      formControls.checkBoxes.forEach((checkBox: any) => updateFormControlToCell('checkBox', checkBox));
+    }
+
+    // Processing option Button
+    if (formControls.optionButtons) {
+      formControls.optionButtons.forEach((optionButton: any) => {
+        if (optionButton.CheckState) {
+          const sheet: any = spreadsheet.sheets[optionButton.SheetIndex];
+          if (sheet) {
+            spreadsheet.setSheetPropertyOnMute(sheet, 'activeOptionBtn', optionButton.Text);
+          }
+        }
+        delete optionButton.CheckState;
+        updateFormControlToCell('optionButton', optionButton);
+      });
+    }
+
+    // Processing Combo Box
+    if (formControls.comboBoxes) {
+      formControls.comboBoxes.forEach((comboBox: any) => updateFormControlToCell('comboBox', comboBox));
+    }
+  }
+
+  const updateFormControlToCell = (template: string, model: { Top: number, Left: number, SheetIndex: number, CheckState?: boolean | number }): void => {
+    const rowArgs: { clientY: number, isImage: boolean, isCheckDPR: boolean } = { clientY: model.Top, isImage: true, isCheckDPR: true };
+    spreadsheet.notify('getRowIdxFromClientY', rowArgs);
+    const colArgs: { clientX: number, isImage: boolean } = { clientX: model.Left, isImage: true };
+    spreadsheet.notify('getColIdxFromClientX', colArgs);
+    const sheet: SheetModel = spreadsheet.sheets[model.SheetIndex];
+    setCell(rowArgs.clientY, colArgs.clientX, sheet, { template: template, formControl: model } as any, true);
   };
 
-  const cellSave = (args: any) =>{
-    console.log(args.value);
-    var address = args.address.split("!")[1];
-    var addressRange = getRangeIndexes(address);
-    var sheet = spreadsheet.getActiveSheet();
-    var cell = getCell(addressRange[0], addressRange[1], sheet) as any;
-    
-    if(cell && (cell as any).formControlType) {
-      // Check which type of form control and update its Text property
-      switch((cell as any).formControlType) {
-        case 'checkbox':
-          if((cell as any).checkboxInfo) {
-            (cell as any).checkboxInfo.Text = args.value;
-            spreadsheet.resize();
-          }
-          break;
-        case 'optionbutton':
-          if((cell as any).optionButtonInfo) {
-            (cell as any).optionButtonInfo.Text = args.value;
-            spreadsheet.resize();
-          }
-          break;
+  // To render the Radio button.
+  const addOptionButton = (element: any, cellModel: any) => {
+    const inputEle = document.createElement('input');
+    element.appendChild(inputEle);
+    const sheet: any = spreadsheet.getActiveSheet();
+    if (!cellModel.formControl.Text) {
+      cellModel.formControl.Text = getUniqueID('Option Button');
+    }
+    // Initializing Syncfusion radio button
+    const radioButton = new RadioButton({
+      label: cellModel.formControl.Text,
+      name: 'radioButton' + sheet.id,
+      checked: sheet.activeOptionBtn === cellModel.formControl.Text,
+      change: () => {
+        spreadsheet.setSheetPropertyOnMute(spreadsheet.getActiveSheet(), 'activeOptionBtn', radioButton.label);
+      }
+    });
+    // element.radioButtonInstance = radioButton;
+    radioButton.createElement = spreadsheet.createElement;
+    radioButton.appendTo(inputEle);
+  }
+
+  // To render the Check box.
+  const addCheckBox = (element: HTMLElement, cellModel: any) => {
+    const checked = !!cellModel.formControl.CheckState;
+
+    // Creating Syncfusion checkbox
+    const checkboxWrapper: HTMLElement = createCheckBox(spreadsheet.createElement, false, { checked, label: cellModel.formControl.Text }) as HTMLElement;
+    element.appendChild(checkboxWrapper);
+
+    // For maintaining the checkbox state
+    checkboxWrapper.onclick = () => {
+      const input = select('.e-frame', checkboxWrapper);
+      const newChecked = !input.classList.contains('e-check');
+      if (newChecked) {
+        input.classList.add('e-check');
+      } else {
+        input.classList.remove('e-check');
+      }
+      // Update the CheckState directly in the formControl object
+      // Convert boolean to numeric value (0 or 1) for server compatibility
+      if (cellModel.formControl) {
+        cellModel.formControl.CheckState = newChecked ? 1 : 0;
+      }
+    };
+  }
+
+  // To render combo Box dropdown
+  const addComboBox = (element: any, cellModel: any) => {
+    // Gets the value from all the cells within the given dropdown fill range
+    const dataRange: string = cellModel.formControl.ListFillRange;
+    const comboBoxData: string[] = [];
+    const sheetIdx: number = getSheetIndexFromAddress(spreadsheet, dataRange);
+    const sheet: SheetModel = spreadsheet.sheets[sheetIdx];
+    const rangeIndexes = getRangeIndexes(dataRange);
+    for (let i = rangeIndexes[0]; i <= rangeIndexes[2]; i++) {
+      for (let j = rangeIndexes[1]; j <= rangeIndexes[3]; j++) {
+        const cell: CellModel = getCell(i, j, sheet);
+        if (cell && !isNullOrUndefined(cell.value)) {
+          comboBoxData.push(cell.value as string);
+        }
+      }
+    }
+    const inputEle = document.createElement('input');
+    element.appendChild(inputEle);
+    // Initializing Syncfusion Dropdown list
+    const dropdownInst: DropDownList = new DropDownList({
+      dataSource: comboBoxData,
+      cssClass: 'e-dropdown-list',
+      value: comboBoxData[cellModel.formControl.SelectedIndex - 1] || null,
+      change: (event) => {
+        // Update the SelectedIndex in the formControl object
+        if (cellModel.formControl && event.value) {
+          const selectedIndex = comboBoxData.indexOf(event.value);
+          cellModel.formControl.SelectedIndex = selectedIndex >= 0 ? selectedIndex + 1 : 0;
+          dropdownInst.value = comboBoxData[cellModel.formControl.SelectedIndex - 1] || null;
+          dropdownInst.dataBind();
+        }
+      }
+    });
+    dropdownInst.createElement = spreadsheet.createElement;
+    dropdownInst.appendTo(inputEle);
+  }
+
+  const beforeCellRenderHandler = (args: any) => {
+    if (args.cell && args.cell.template && args.element) {
+      while (args.element.firstChild) {
+        args.element.removeChild(args.element.firstChild);
+      }
+      args.element.textContent = '';
+      if (args.cell.template === 'checkBox') { // Adding checkbox
+        addCheckBox(args.element, args.cell);
+      } else if (args.cell.template === 'comboBox') { // Adding dropdown
+        addComboBox(args.element, args.cell);
+      } else if (args.cell.template === 'optionButton') { // Adding radio button
+        addOptionButton(args.element, args.cell);
       }
     }
   }
 
-  const beforeCellUpdate = (args: any) =>{
-    var sheet = spreadsheet.getActiveSheet();
-    var cell = getCell(args.rowIndex, args.colIndex, sheet) as any;
-    
-    if(cell && (cell as any).formControlType && (cell as any).formControlType == "comboBox") {
-      args.cancel = true;
+  const beforeSaveHandler = (args: BeforeSaveEventArgs): void => {
+    if (!isSaveJson) {
+      if (spreadsheet.isFormControlsAdded && args.saveType === 'Xlsx') {
+        // Canceling the default save action.
+        args.cancel = true;
+        // Performing custom save to process form controls and include form controls duing save action.
+        performCustomSave(args);
+      } else {
+        args.isFullPost = false;
+      }
     }
-  }
+  };
 
-  const performSave = () => {
+  const performCustomSave = (saveArgs: BeforeSaveEventArgs) => {
+    isSaveJson = true;
+    spreadsheet.showSpinner();
     spreadsheet.saveAsJson().then((res: any) => {
-      workbookJson = res.jsonObject.Workbook;
-      processWorkbookJson(workbookJson);
-      
-      var formData = new FormData();
-
+      isSaveJson = false;
+      const workbookJson = res.jsonObject.Workbook;
+      const formData: FormData = new FormData();
       // Add the JSON data to the formData object
-      formData.append(
-        "JSONData",
-        JSON.stringify(workbookJson)
-      );
-
+      formData.append('JSONData', JSON.stringify(workbookJson));
       // Specify the file name and save type as Excel (Xlsx)
-      formData.append("fileName", "Sample");
-      formData.append("saveType", "Xlsx");
-      
+      formData.append('fileName', saveArgs.fileName as string);
+      formData.append('saveType', 'Xlsx');
+      // Process form controls from workbook
+      const formControls: { checkBoxes: object[], optionButtons: object[], comboBoxes: object[] } = processFormControlsOnSave(workbookJson);
       // Add form controls data - sending each collection separately for better server processing
-      formData.append("formControls[checkboxCol]", JSON.stringify(formControls.checkboxCol));
-      formData.append("formControls[optionButtonCol]", JSON.stringify(formControls.optionButtonCol));
-      formData.append("formControls[comboBoxCol]", JSON.stringify(formControls.comboBoxCol));
-      
+      formData.append('formControls[checkBoxes]', JSON.stringify(formControls.checkBoxes));
+      formData.append('formControls[optionButtons]', JSON.stringify(formControls.optionButtons));
+      formData.append('formControls[comboBoxes]', JSON.stringify(formControls.comboBoxes));
       // Add PDF layout settings, even though this is for Excel export
-      formData.append("pdfLayoutSettings", JSON.stringify({ fitSheetOnOnePage: false, orientation: "Portrait" }));
-
+      formData.append('pdfLayoutSettings', JSON.stringify({ fitSheetOnOnePage: false, orientation: 'Portrait' }));
       // Send a POST request to Syncfusion's save API
-      fetch(
-        'https://localhost:44341/api/spreadsheet/save',
-        {
-          method: 'POST',
-          body: formData,
-        }
-      ).then((response) => {
+      fetch('https://localhost:44341/api/spreadsheet/save', { method: 'POST', body: formData }).then((response) => {
         response.blob().then((data) => {
-          var anchor: any = createElement('a', {
-            attrs: { download: 'Sample.xlsx' },
-          });
-          var url = URL.createObjectURL(data);
+          // Saving the file in the local machine inside default download location.
+          const anchor: any = createElement('a', { attrs: { download: saveArgs.fileName + '.xlsx' } });
+          const url = URL.createObjectURL(data);
           anchor.href = url;
           document.body.appendChild(anchor);
           anchor.click();
           URL.revokeObjectURL(url);
           document.body.removeChild(anchor);
+          spreadsheet.hideSpinner();
         });
       })
     });
   }
 
-  const processWorkbookJson = (workbook: any) => {
+  const processFormControlsOnSave = (workbook: any): { checkBoxes: object[], optionButtons: object[], comboBoxes: object[] } => {
     // Initialize formControls object
-    formControls = {
-      checkboxCol: [],
-      optionButtonCol: [],
-      comboBoxCol: []
-    };
-
-    if (workbook.sheets && Array.isArray(workbook.sheets)) {
-      workbook.sheets.forEach((sheet: any, sheetIndex: number) => {
-        // Loop through each row
-        if (sheet.rows && Array.isArray(sheet.rows)) {
-          sheet.rows.forEach((row: any, rowIndex: number) => {
-            // Loop through each cell
-            if (row.cells && Array.isArray(row.cells)) {
-              row.cells.forEach((cell: any, colIndex: number) => {
-                // Check if the cell has formControl property
-                if (cell.formControlType) {
-                  // Perform separate action based on the form control type
-                  switch (cell.formControlType) {
-                    case 'checkbox':
-                      // Add checkboxInfo to checkboxCol array
-                      if (cell.checkboxInfo) {
-                        // Add row and column indices
-                        cell.checkboxInfo.rowIndex = rowIndex;
-                        cell.checkboxInfo.colIndex = colIndex;
-                        cell.checkboxInfo.sheetIndex = sheetIndex;
-                        
-                        // Ensure CheckState is numeric value (0 or 1) for server compatibility
-                        if (typeof cell.checkboxInfo.CheckState === 'boolean') {
-                          cell.checkboxInfo.CheckState = cell.checkboxInfo.CheckState ? 1 : 0;
-                        }
-                        
-                        formControls.checkboxCol.push(cell.checkboxInfo);
+    const formControls: { checkBoxes: object[], optionButtons: object[], comboBoxes: object[] } = { checkBoxes: [], optionButtons: [], comboBoxes: [] };
+    workbook.sheets.forEach((sheet: any, sheetIndex: number) => {
+      // Loop through each row
+      if (sheet.rows && Array.isArray(sheet.rows)) {
+        sheet.rows.forEach((row: any, rowIndex: number) => {
+          // Loop through each cell
+          if (row.cells && Array.isArray(row.cells)) {
+            row.cells.forEach((cell: any, colIndex: number) => {
+              // Check if the cell has formControl property
+              if (cell.template && cell.formControl) {
+                // Add row and column indices
+                cell.formControl.RowIndex = rowIndex;
+                cell.formControl.ColIndex = colIndex;
+                cell.formControl.SheetIndex = sheetIndex;
+                // Perform separate action based on the form control type
+                switch (cell.template) {
+                  // Add formControl to checkBoxes array
+                  case 'checkBox':
+                    // Ensure CheckState is numeric value (0 or 1) for server compatibility
+                    if (typeof cell.formControl.CheckState === 'boolean') {
+                      cell.formControl.CheckState = cell.formControl.CheckState ? 1 : 0;
+                    }
+                    formControls.checkBoxes.push(cell.formControl);
+                    break;
+                  // Add formControl to optionButtons array
+                  case 'optionButton':
+                    {
+                      const sheetModel: any = spreadsheet.sheets[sheetIndex];
+                      // Updating option button checked state.
+                      if (sheetModel && cell.formControl.Text === sheetModel.activeOptionBtn) {
+                        cell.formControl.CheckState = 1;
                       }
-                      // Remove form control properties from the cell
-                      delete cell.formControlType;
-                      delete cell.checkboxInfo;
-                      delete cell.template;
-                      delete cell.value;
-                      break;
-                    case 'optionbutton':
-                      // Add optionButtonInfo to optionButtonCol array
-                      if (cell.optionButtonInfo) {
-                        // Add row and column indices to the option button info
-                        cell.optionButtonInfo.rowIndex = rowIndex;
-                        cell.optionButtonInfo.colIndex = colIndex;
-                        cell.optionButtonInfo.sheetIndex = sheetIndex;
-                        
-                        // Get the actual checked state from the DOM element
-                        const optionButtonEle = spreadsheet.getCell(rowIndex, colIndex);
-                        if (optionButtonEle && optionButtonEle.radioButtonInstance) {
-                          cell.optionButtonInfo.CheckState = optionButtonEle.radioButtonInstance.checked ? 1 : 0;
-                        } else if (typeof cell.optionButtonInfo.CheckState === 'boolean') {
-                          cell.optionButtonInfo.CheckState = cell.optionButtonInfo.CheckState ? 1 : 0;
-                        }
-                        
-                        formControls.optionButtonCol.push(cell.optionButtonInfo);
-                      }
-                      // Remove form control properties from the cell
-                      delete cell.formControlType;
-                      delete cell.optionButtonInfo;
-                      delete cell.template;
-                      delete cell.value;
-                      break;
-                    case 'comboBox':
-                      // Add comboBoxInfo to comboBoxCol array
-                      if (cell.comboBoxInfo) {
-                        // Add row and column indices to the combo box info
-                        cell.comboBoxInfo.rowIndex = rowIndex;
-                        cell.comboBoxInfo.colIndex = colIndex;
-                        cell.comboBoxInfo.sheetIndex = sheetIndex;
-                        
-                        formControls.comboBoxCol.push(cell.comboBoxInfo);
-                      }
-                      // Remove form control properties from the cell
-                      delete cell.formControlType;
-                      delete cell.comboBoxInfo;
-                      delete cell.template;
-                      delete cell.value;
-                      break;
-                  }
+                      formControls.optionButtons.push(cell.formControl);
+                    }
+                    break;
+                  // Add formControl to comboBoxes array
+                  case 'comboBox':
+                    formControls.comboBoxes.push(cell.formControl);
+                    break;
                 }
-              });
-            }
-          });
-        }
-      });
-    }
-    
-  }
-
-  const openComplete = () => {
-    addFormControls();
-  }
-
-  const addFormControls = () => {
-    if (jsonData || jsonData.Workbook || jsonData.Workbook.formControls) {
-      const formControls = jsonData.Workbook.formControls;
-
-      // Processing Checkboxes
-      if (formControls.checkboxCol) {
-        // Iterate through all checkboxes
-        Object.keys(formControls.checkboxCol).forEach(key => {
-          const checkbox = formControls.checkboxCol[key];
-          // Ensure CheckState is numeric value (0 or 1) for server compatibility
-          if (typeof checkbox.CheckState === 'boolean') {
-            checkbox.CheckState = checkbox.CheckState ? 1 : 0;
+                // Remove form control properties from the cell
+                delete cell.formControl;
+                delete cell.template;
+              }
+            });
           }
-          
-          var rowIndex = { clientY: checkbox.Top, isImage: true, isCheckDPR: true };
-          var colIndex = { clientX: checkbox.Left, isImage: true };
-
-          spreadsheet.notify('getRowIdxFromClientY', rowIndex);
-          spreadsheet.notify('getColIdxFromClientX', colIndex);
-          var checkboxRowIndex = rowIndex.clientY;
-          var checkboxColIndex = colIndex.clientX;
-          var sheet: any = spreadsheet.sheets[checkbox.SheetIndex];
-          // util method - setCell(rowIndex: number, colIndex: number, sheet: sheet, cell: any, isExtend?: boolean): void
-          setCell(checkboxRowIndex, checkboxColIndex, sheet, { template: "checkbox", value: checkbox.Text, formControlType: "checkbox", checkboxInfo: checkbox } as any, true);
-
-          const cellModel = getCell(checkboxRowIndex, checkboxColIndex, sheet);
-          const cellEle = spreadsheet.getCell(checkboxRowIndex, checkboxColIndex);
-          addCheckBox(cellEle, cellModel);
-
         });
-      }
-
-      // Processing option Button
-      if (formControls.optionButtonCol) {
-        // Iterate through all optionButtons
-        Object.keys(formControls.optionButtonCol).forEach(key => {
-          const optionButton = formControls.optionButtonCol[key];
-          // Ensure CheckState is numeric value (0 or 1) for server compatibility
-          if (typeof optionButton.CheckState === 'boolean') {
-            optionButton.CheckState = optionButton.CheckState ? 1 : 0;
-          }
-          
-          var rowIndex = { clientY: optionButton.Top, isImage: true, isCheckDPR: true };
-          var colIndex = { clientX: optionButton.Left, isImage: true };
-
-          spreadsheet.notify('getRowIdxFromClientY', rowIndex);
-          spreadsheet.notify('getColIdxFromClientX', colIndex);
-          var optionButtonRowIndex = rowIndex.clientY;
-          var optionButtonColIndex = colIndex.clientX;
-          var sheet: any = spreadsheet.sheets[optionButton.SheetIndex];
-          setCell(optionButtonRowIndex, optionButtonColIndex, sheet, { template: "optionButton", value: optionButton.Text, formControlType: "optionbutton", optionButtonInfo: optionButton } as any, true);
-
-          const cellModel = getCell(optionButtonRowIndex, optionButtonColIndex, sheet);
-          const cellEle = spreadsheet.getCell(optionButtonRowIndex, optionButtonColIndex);
-
-          addOptionButton(cellEle, cellModel);
-        });
-      }
-
-      // Processing Combo Box
-      if (formControls.comboBoxCol) {
-        // Iterate through all comboboxex
-        Object.keys(formControls.comboBoxCol).forEach(key => {
-          const comboBox = formControls.comboBoxCol[key];
-          var rowIndex = { clientY: comboBox.Top, isImage: true, isCheckDPR: true };
-          var colIndex = { clientX: comboBox.Left, isImage: true };
-
-          spreadsheet.notify('getRowIdxFromClientY', rowIndex);
-          spreadsheet.notify('getColIdxFromClientX', colIndex);
-          var comboBoxRowIndex = rowIndex.clientY;
-          var comboBoxColIndex = colIndex.clientX;
-          var sheet: any = spreadsheet.sheets[comboBox.SheetIndex];
-          setCell(comboBoxRowIndex, comboBoxColIndex, sheet, { template: "comboBox", formControlType: "comboBox", comboBoxInfo: comboBox } as any, true);
-
-          const cellModel = getCell(comboBoxRowIndex, comboBoxColIndex, sheet);
-          const cellEle = spreadsheet.getCell(comboBoxRowIndex, comboBoxColIndex);
-
-          var comboBoxData: any = getRangeData(comboBox.ListFillRange, sheet);
-
-          addComboBox(cellEle, cellModel, comboBoxData);
-        });
-      }
-
-    }
-
-  }
-
-  // Helper method to get data from all the cells within the given range
-  const getRangeData = (dataRange: any, sheet: any) => {
-    var comboBoxData: any = [];
-    var cellRange = dataRange.split("!")[1];
-    var rangeIndexes = getRangeIndexes(cellRange, sheet);
-
-    for (var i = rangeIndexes[0]; i <= rangeIndexes[2]; i++) {
-      for (var j = rangeIndexes[1]; j <= rangeIndexes[3]; j++) {
-        var cell = getCell(i, j, sheet);
-        comboBoxData.push(cell?.value);
-      }
-    }
-    return comboBoxData;
-  }
-
-  // To render the Radio button.
-  const addOptionButton = (element: any, cellModel: any) => {
-    element.innerHTML = '';
-    var inputEle = document.createElement('input');
-    element.appendChild(inputEle);
-    const radioButton = new RadioButton({
-      label: cellModel && cellModel.value ? cellModel.value : null,
-      name: "radioButton Col",
-      checked: !!cellModel.optionButtonInfo.CheckState,
-      change: (args: any) => {
-        // Update the CheckState directly in the optionButtonInfo object
-        if (cellModel.optionButtonInfo) {
-          cellModel.optionButtonInfo.CheckState = 1;
-        }
-      }
-    }, inputEle);
-    element.radioButtonInstance = radioButton;
-  }
-
-  // To render the Check box.
-  const addCheckBox = (element: any, cellModel: any) => {
-    const sheet = spreadsheet.getActiveSheet();
-    const checked = !!cellModel?.checkboxInfo?.CheckState;
-
-    const checkboxWrapper = createCheckBox(
-      spreadsheet.createElement,
-      false,
-      {
-        checked,
-        label: cellModel.value,
-      }
-    );
-
-    element.appendChild(checkboxWrapper);
-    element.checkboxInstance = checkboxWrapper;
-
-    // For maintaining the checked state
-    checkboxWrapper.addEventListener('click', () => {
-      const input = select('.e-frame', checkboxWrapper);
-      const newChecked = !input.classList.contains('e-check');
-      if (newChecked) input.classList.add('e-check');
-      else input.classList.remove('e-check');
-      
-      // Update the CheckState directly in the checkboxInfo object
-      // Convert boolean to numeric value (0 or 1) for server compatibility
-      if (cellModel.checkboxInfo) {
-        cellModel.checkboxInfo.CheckState = newChecked ? 1 : 0;
       }
     });
-  }
-
-  // To handle the change event of dropdown list.
-  const dropDownChangeHandler = (event: any) => {
-    const sheet = spreadsheet.getActiveSheet();
-    spreadsheet.updateCell({ value: event.value.toString() }, sheet.activeCell);
-  };
-
-  // To render combo Box
-  const addComboBox = (element: any, cellModel: any, comboBoxData: any) => {
-    element.innerHTML = '';
-    var inputEle = document.createElement('input');
-    element.appendChild(inputEle);
-    new DropDownList({
-      text: cellModel && cellModel.value ? cellModel.value : null,
-      dataSource: comboBoxData,
-      cssClass: 'e-dropdown-list',
-      value: cellModel && cellModel.comboBoxInfo && cellModel.comboBoxInfo.SelectedIndex ? comboBoxData[cellModel.comboBoxInfo.SelectedIndex - 1] : null,
-      change: (event) => {
-        dropDownChangeHandler(event);
-        // Update the SelectedIndex in the comboBoxInfo object
-        if (cellModel.comboBoxInfo && event.value) {
-          const selectedIndex = comboBoxData.indexOf(event.value);
-          cellModel.comboBoxInfo.SelectedIndex = selectedIndex >= 0 ? selectedIndex + 1 : 0;
-        }
-      }
-    }, inputEle);
-  }
-
-  const handleBeforeCellRender = (args: any) => {
-    // adding checkbox if the cell contains 'checkbox' template
-    if (args.element && args.cell?.template === 'checkbox') {
-      while (args.element.firstChild) {
-        args.element.removeChild(args.element.firstChild);
-      }
-      args.element.textContent = "";
-      addCheckBox(args.element, args.cell);
-    } else if (args.element && args.cell && args.cell.template === 'comboBox') {
-      var sheet = spreadsheet.getActiveSheet();
-      args.element.textContent = "";
-      var comboBoxData = getRangeData(args.cell.comboBoxInfo.ListFillRange, sheet);
-      addComboBox(args.element, args.cell, comboBoxData);
-    }
-    else if (args.element && args.cell && args.cell.template === 'optionButton') {
-      args.element.textContent = "";
-      addOptionButton(args.element, args.cell);
-    }
+    return formControls;
   }
 
   return (
     <div className="app-container">
-      <h1 className="app-header">Spreadsheet Form Controls</h1>
-      <button className='btn' onClick={openExcel}>Open Excel File</button>
-      <button className='btn' onClick={performSave}>Save Excel File</button>
-      <SpreadsheetComponent
-        openUrl='https://localhost:44341/api/spreadsheet/open'
-        saveUrl='https://localhost:44341/api/spreadsheet/save'
-        ref={(ssObj: any) => { spreadsheet = ssObj; }}
-        created={onCreated}
-        openComplete={openComplete}
-        cellSave = {cellSave}
-        beforeCellUpdate = {beforeCellUpdate}
-        beforeCellRender={handleBeforeCellRender}
-        height='600px'
-      >
-      </SpreadsheetComponent>
+      <div className="app-header">Spreadsheet Form Controls</div>
+      <div className='container'>
+        <SpreadsheetComponent
+          openUrl='https://localhost:44341/api/spreadsheet/open'
+          saveUrl='https://localhost:44341/api/spreadsheet/save'
+          ref={(ssObj: any) => { spreadsheet = ssObj; }}
+          openComplete={openCompleteHandler}
+          beforeCellRender={beforeCellRenderHandler}
+          beforeSave={beforeSaveHandler}
+        >
+        </SpreadsheetComponent>
+      </div>
     </div>
   );
 }
