@@ -95,13 +95,13 @@ export default function App() {
     };
 
     if (workbook.sheets && Array.isArray(workbook.sheets)) {
-      workbook.sheets.forEach((sheet: any) => {
+      workbook.sheets.forEach((sheet: any, sheetIndex: number) => {
         // Loop through each row
         if (sheet.rows && Array.isArray(sheet.rows)) {
-          sheet.rows.forEach((row: any) => {
+          sheet.rows.forEach((row: any, rowIndex: number) => {
             // Loop through each cell
             if (row.cells && Array.isArray(row.cells)) {
-              row.cells.forEach((cell: any) => {
+              row.cells.forEach((cell: any, colIndex: number) => {
                 // Check if the cell has formControl property
                 if (cell.formControlType) {
                   // Perform separate action based on the form control type
@@ -109,6 +109,16 @@ export default function App() {
                     case 'checkbox':
                       // Add checkboxInfo to checkboxCol array
                       if (cell.checkboxInfo) {
+                        // Add row and column indices
+                        cell.checkboxInfo.rowIndex = rowIndex;
+                        cell.checkboxInfo.colIndex = colIndex;
+                        cell.checkboxInfo.sheetIndex = sheetIndex;
+                        
+                        // Ensure CheckState is numeric value (0 or 1) for server compatibility
+                        if (typeof cell.checkboxInfo.CheckState === 'boolean') {
+                          cell.checkboxInfo.CheckState = cell.checkboxInfo.CheckState ? 1 : 0;
+                        }
+                        
                         formControls.checkboxCol.push(cell.checkboxInfo);
                       }
                       // Remove form control properties from the cell
@@ -119,6 +129,19 @@ export default function App() {
                     case 'optionbutton':
                       // Add optionButtonInfo to optionButtonCol array
                       if (cell.optionButtonInfo) {
+                        // Add row and column indices to the option button info
+                        cell.optionButtonInfo.rowIndex = rowIndex;
+                        cell.optionButtonInfo.colIndex = colIndex;
+                        cell.optionButtonInfo.sheetIndex = sheetIndex;
+                        
+                        // Get the actual checked state from the DOM element
+                        const optionButtonEle = spreadsheet.getCell(rowIndex, colIndex);
+                        if (optionButtonEle && optionButtonEle.radioButtonInstance) {
+                          cell.optionButtonInfo.CheckState = optionButtonEle.radioButtonInstance.checked ? 1 : 0;
+                        } else if (typeof cell.optionButtonInfo.CheckState === 'boolean') {
+                          cell.optionButtonInfo.CheckState = cell.optionButtonInfo.CheckState ? 1 : 0;
+                        }
+                        
                         formControls.optionButtonCol.push(cell.optionButtonInfo);
                       }
                       // Remove form control properties from the cell
@@ -129,6 +152,11 @@ export default function App() {
                     case 'comboBox':
                       // Add comboBoxInfo to comboBoxCol array
                       if (cell.comboBoxInfo) {
+                        // Add row and column indices to the combo box info
+                        cell.comboBoxInfo.rowIndex = rowIndex;
+                        cell.comboBoxInfo.colIndex = colIndex;
+                        cell.comboBoxInfo.sheetIndex = sheetIndex;
+                        
                         formControls.comboBoxCol.push(cell.comboBoxInfo);
                       }
                       // Remove form control properties from the cell
@@ -160,6 +188,11 @@ export default function App() {
         // Iterate through all checkboxes
         Object.keys(formControls.checkboxCol).forEach(key => {
           const checkbox = formControls.checkboxCol[key];
+          // Ensure CheckState is numeric value (0 or 1) for server compatibility
+          if (typeof checkbox.CheckState === 'boolean') {
+            checkbox.CheckState = checkbox.CheckState ? 1 : 0;
+          }
+          
           var rowIndex = { clientY: checkbox.Top, isImage: true, isCheckDPR: true };
           var colIndex = { clientX: checkbox.Left, isImage: true };
 
@@ -183,6 +216,11 @@ export default function App() {
         // Iterate through all optionButtons
         Object.keys(formControls.optionButtonCol).forEach(key => {
           const optionButton = formControls.optionButtonCol[key];
+          // Ensure CheckState is numeric value (0 or 1) for server compatibility
+          if (typeof optionButton.CheckState === 'boolean') {
+            optionButton.CheckState = optionButton.CheckState ? 1 : 0;
+          }
+          
           var rowIndex = { clientY: optionButton.Top, isImage: true, isCheckDPR: true };
           var colIndex = { clientX: optionButton.Left, isImage: true };
 
@@ -248,11 +286,18 @@ export default function App() {
     element.innerHTML = '';
     var inputEle = document.createElement('input');
     element.appendChild(inputEle);
-    new RadioButton({
+    const radioButton = new RadioButton({
       label: cellModel && cellModel.value ? cellModel.value : null,
       name: "radioButton Col",
-      checked: cellModel.optionButtonInfo.CheckState,
+      checked: !!cellModel.optionButtonInfo.CheckState,
+      change: (args: any) => {
+        // Update the CheckState directly in the optionButtonInfo object
+        if (cellModel.optionButtonInfo) {
+          cellModel.optionButtonInfo.CheckState = 1;
+        }
+      }
     }, inputEle);
+    element.radioButtonInstance = radioButton;
   }
 
   // To render the Check box.
@@ -270,6 +315,7 @@ export default function App() {
     );
 
     element.appendChild(checkboxWrapper);
+    element.checkboxInstance = checkboxWrapper;
 
     // For maintaining the checked state
     checkboxWrapper.addEventListener('click', () => {
@@ -277,6 +323,12 @@ export default function App() {
       const newChecked = !input.classList.contains('e-check');
       if (newChecked) input.classList.add('e-check');
       else input.classList.remove('e-check');
+      
+      // Update the CheckState directly in the checkboxInfo object
+      // Convert boolean to numeric value (0 or 1) for server compatibility
+      if (cellModel.checkboxInfo) {
+        cellModel.checkboxInfo.CheckState = newChecked ? 1 : 0;
+      }
     });
   }
 
@@ -298,6 +350,11 @@ export default function App() {
       value: cellModel && cellModel.comboBoxInfo && cellModel.comboBoxInfo.SelectedIndex ? comboBoxData[cellModel.comboBoxInfo.SelectedIndex - 1] : null,
       change: (event) => {
         dropDownChangeHandler(event);
+        // Update the SelectedIndex in the comboBoxInfo object
+        if (cellModel.comboBoxInfo && event.value) {
+          const selectedIndex = comboBoxData.indexOf(event.value);
+          cellModel.comboBoxInfo.SelectedIndex = selectedIndex >= 0 ? selectedIndex + 1 : 0;
+        }
       }
     }, inputEle);
   }
@@ -326,6 +383,7 @@ export default function App() {
     <div className="app-container">
       <h1 className="app-header">Spreadsheet Form Controls</h1>
       <button className='btn' onClick={openExcel}>Open Excel File</button>
+      <button className='btn' onClick={performSave}>Save Excel File</button>
       <SpreadsheetComponent
         openUrl='https://localhost:44341/api/spreadsheet/open'
         saveUrl='https://localhost:44341/api/spreadsheet/save'

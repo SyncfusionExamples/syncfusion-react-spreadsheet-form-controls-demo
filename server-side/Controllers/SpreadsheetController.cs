@@ -50,7 +50,7 @@ namespace WebAPI.Controllers
             for (int i = 0; i < workbook.Worksheets.Count; i++)
             {
                 IWorksheet worksheet = workbook.Worksheets[i];
-                
+
                 // Store information about each checkbox with all required properties
                 for (int j = 0; j < worksheet.CheckBoxes.Count; j++)
                 {
@@ -68,7 +68,7 @@ namespace WebAPI.Controllers
 
                     allCheckBoxes.Add(CheckBoxShape);
                 }
-                
+
                 // Store information about each option button with all required properties
                 for (int j = 0; j < worksheet.OptionButtons.Count; j++)
                 {
@@ -86,7 +86,7 @@ namespace WebAPI.Controllers
 
                     allOptionButtons.Add(OptionButtonShape);
                 }
-                
+
                 // Store information about each combo box with all required properties
                 for (int j = 0; j < worksheet.ComboBoxes.Count; j++)
                 {
@@ -108,7 +108,7 @@ namespace WebAPI.Controllers
             }
 
             fileStream.Close();
-            
+
             // Add checkbox, option button, and combo box information to the result
             if (allCheckBoxes.Count > 0 || allOptionButtons.Count > 0 || allComboBoxes.Count > 0)
             {
@@ -119,7 +119,7 @@ namespace WebAPI.Controllers
                     {
                         // Convert to a JSON object we can modify
                         var rootObject = JsonSerializer.Deserialize<Dictionary<string, object>>(result);
-                        
+
                         // Navigate to the workbook object
                         if (rootObject.ContainsKey("Workbook") && rootObject["Workbook"] != null)
                         {
@@ -127,43 +127,43 @@ namespace WebAPI.Controllers
                             var workbookElement = document.RootElement.GetProperty("Workbook");
                             var workbookJson = workbookElement.GetRawText();
                             var workbookObject = JsonSerializer.Deserialize<Dictionary<string, object>>(workbookJson);
-                            
+
                             // Create a formControls object to hold all form control collections
                             var formControlsObject = new Dictionary<string, object>();
-                            
+
                             // Add checkbox data to formControls object
                             if (allCheckBoxes.Count > 0)
                             {
                                 formControlsObject["checkboxCol"] = allCheckBoxes;
                             }
-                            
+
                             // Add option button data to formControls object
                             if (allOptionButtons.Count > 0)
                             {
                                 formControlsObject["optionButtonCol"] = allOptionButtons;
                             }
-                            
+
                             // Add combo box data to formControls object
                             if (allComboBoxes.Count > 0)
                             {
                                 formControlsObject["comboBoxCol"] = allComboBoxes;
                             }
-                            
+
                             // Add formControls object to workbook
                             workbookObject["formControls"] = formControlsObject;
-                            
+
                             rootObject["Workbook"] = workbookObject;
                         }
-                        
+
                         result = JsonSerializer.Serialize(rootObject);
                     }
                 }
                 catch (Exception ex)
                 {
-                    throw(ex);
+                    throw (ex);
                 }
             }
-            
+
             return Content(result);
         }
 
@@ -181,6 +181,8 @@ namespace WebAPI.Controllers
             public ExcelCheckState CheckState { get; set; }
             public string Text { get; set; } = string.Empty;
             public int SheetIndex { get; set; }
+            public int rowIndex { get; set; }
+            public int colIndex { get; set; }
         }
 
         public class OptionButtonShape
@@ -192,6 +194,8 @@ namespace WebAPI.Controllers
             public ExcelCheckState CheckState { get; set; }
             public string Text { get; set; } = string.Empty;
             public int SheetIndex { get; set; }
+            public int rowIndex { get; set; }
+            public int colIndex { get; set; }
         }
 
         public class ComboBoxShape
@@ -204,21 +208,196 @@ namespace WebAPI.Controllers
             public string ListFillRange { get; set; } = string.Empty;
             public string LinkedCell { get; set; } = string.Empty;
             public int SheetIndex { get; set; }
+            public int rowIndex { get; set; }
+            public int colIndex { get; set; }
         }
+
+        public int checkboxRow = 4;
+        public int comboBoxRow = 4;
+        public int optionButtonRow = 4;
+        //[HttpPost]
+        //[Route("Save")]
+        //public String Save([FromForm] SaveSettings saveSettings,
+        //                    [FromForm] Dictionary<string, string> formControls)
+        //{
+        //    // Deserialize form controls from the dictionary
+        //    List<CheckBoxShape> checkboxes = new List<CheckBoxShape>();
+        //    List<OptionButtonShape> optionButtons = new List<OptionButtonShape>();
+        //    List<ComboBoxShape> comboBoxes = new List<ComboBoxShape>();
+
+        //    // Parse checkboxCol
+        //    if (formControls.ContainsKey("checkboxCol") && !string.IsNullOrEmpty(formControls["checkboxCol"]))
+        //    {
+        //        checkboxes = JsonSerializer.Deserialize<List<CheckBoxShape>>(formControls["checkboxCol"]) ?? new List<CheckBoxShape>();
+        //    }
+
+        //    // Parse optionButtonCol
+        //    if (formControls.ContainsKey("optionButtonCol") && !string.IsNullOrEmpty(formControls["optionButtonCol"]))
+        //    {
+        //        optionButtons = JsonSerializer.Deserialize<List<OptionButtonShape>>(formControls["optionButtonCol"]) ?? new List<OptionButtonShape>();
+        //    }
+
+        //    // Parse comboBoxCol
+        //    if (formControls.ContainsKey("comboBoxCol") && !string.IsNullOrEmpty(formControls["comboBoxCol"]))
+        //    {
+        //        comboBoxes = JsonSerializer.Deserialize<List<ComboBoxShape>>(formControls["comboBoxCol"]) ?? new List<ComboBoxShape>();
+        //    }
+
+        //    ExcelEngine excelEngine = new ExcelEngine();
+        //    IApplication application = excelEngine.Excel;
+        //    Stream fileStream = Workbook.Save<Stream>(saveSettings);
+        //    IWorkbook workbook = excelEngine.Excel.Workbooks.Open(fileStream, ExcelOpenType.Automatic);
+
+        //    // Add checkboxes to the workbook
+        //    foreach (var checkbox in checkboxes)
+        //    {
+        //        IWorksheet sheet = workbook.Worksheets[checkbox.SheetIndex];
+        //        //ICheckBoxShape checkBox = sheet.CheckBoxes.AddCheckBox(checkbox.Top, checkbox.Left, checkbox.Height, checkbox.Width);
+        //        //sheet.CheckBoxes.AddCheckBox()
+
+        //        //checkBox.Text = checkbox.Text;
+        //        //checkBox.CheckState = checkbox.CheckState;
+
+        //        for (int i = 4; i <= 6; i++)
+        //        {
+        //            ICheckBoxShape checkBox = sheet.CheckBoxes.AddCheckBox(i, 1, checkbox.Height, checkbox.Width);
+        //            checkBox.Text = checkbox.Text;
+        //            checkBox.CheckState = checkbox.CheckState;
+        //        }
+        //    }
+
+        //    // Add option buttons to the workbook
+        //    foreach (var optionButton in optionButtons)
+        //    {
+        //        IWorksheet sheet = workbook.Worksheets[optionButton.SheetIndex];
+        //        //IOptionButtonShape optBtn = sheet.OptionButtons.AddOptionButton(optionButton.Top, optionButton.Left, optionButton.Height, optionButton.Width);
+        //        //optBtn.Text = optionButton.Text;
+        //        //optBtn.CheckState = optionButton.CheckState;
+        //        for (int i = 4; i <= 6; i++)
+        //        {
+        //            IOptionButtonShape optBtn = sheet.OptionButtons.AddOptionButton(i, 2, optionButton.Height, optionButton.Width);
+        //            optBtn.Text = optionButton.Text;
+        //            optBtn.CheckState = optionButton.CheckState;
+        //        }
+        //    }
+
+        //    // Add combo boxes to the workbook
+        //    foreach (var comboBox in comboBoxes)
+        //    {
+        //        IWorksheet sheet = workbook.Worksheets[comboBox.SheetIndex];
+        //        IComboBoxShape comboBoxShape = sheet.ComboBoxes.AddComboBox(4, 3, comboBox.Height, comboBox.Width);
+
+        //        // Set list fill range if available
+        //        if (!string.IsNullOrEmpty(comboBox.ListFillRange))
+        //        {
+        //            comboBoxShape.ListFillRange = sheet[comboBox.ListFillRange];
+        //        }
+
+        //        // Set linked cell if available
+        //        if (!string.IsNullOrEmpty(comboBox.LinkedCell))
+        //        {
+        //            comboBoxShape.LinkedCell = sheet[comboBox.LinkedCell];
+        //        }
+
+        //        // Set selected index
+        //        comboBoxShape.SelectedIndex = comboBox.SelectedIndex;
+        //    }
+
+        //    // Save the workbook with the form controls
+        //    workbook.SaveAs("Output.xlsx");
+        //    //var saveType = saveSettings.SaveType.ToString().ToLower();
+        //    //string basePath = _env.ContentRootPath + "\\Files\\" + saveSettings.FileName + '.' + saveType;
+        //    //var file = System.IO.File.Create(basePath);
+        //    //fileStream.Seek(0, SeekOrigin.Begin);
+        //    //// To convert the stream to file options.
+        //    //fileStream.CopyTo(file);
+        //    //file.Dispose();
+        //    //fileStream.Dispose();
+        //    return String.Empty;
+        //}
+
 
         [HttpPost]
         [Route("Save")]
-        public FileStreamResult Save([FromForm] SaveSettings saveSettings,
-                            [FromForm] Dictionary<string, string> formControls)
+        public String Save([FromForm] SaveSettings saveSettings,
+                   [FromForm] Dictionary<string, string> formControls)
         {
+            // Deserialize form controls from the dictionary
+            List<CheckBoxShape> checkboxes = new List<CheckBoxShape>();
+            List<OptionButtonShape> optionButtons = new List<OptionButtonShape>();
+            List<ComboBoxShape> comboBoxes = new List<ComboBoxShape>();
+
+            // Parse checkboxCol
+            if (formControls.ContainsKey("checkboxCol") && !string.IsNullOrEmpty(formControls["checkboxCol"]))
+            {
+                checkboxes = JsonSerializer.Deserialize<List<CheckBoxShape>>(formControls["checkboxCol"]) ?? new List<CheckBoxShape>();
+            }
+
+            // Parse optionButtonCol
+            if (formControls.ContainsKey("optionButtonCol") && !string.IsNullOrEmpty(formControls["optionButtonCol"]))
+            {
+                optionButtons = JsonSerializer.Deserialize<List<OptionButtonShape>>(formControls["optionButtonCol"]) ?? new List<OptionButtonShape>();
+            }
+
+            // Parse comboBoxCol
+            if (formControls.ContainsKey("comboBoxCol") && !string.IsNullOrEmpty(formControls["comboBoxCol"]))
+            {
+                comboBoxes = JsonSerializer.Deserialize<List<ComboBoxShape>>(formControls["comboBoxCol"]) ?? new List<ComboBoxShape>();
+            }
+
             ExcelEngine excelEngine = new ExcelEngine();
             IApplication application = excelEngine.Excel;
-            var form = formControls;
             Stream fileStream = Workbook.Save<Stream>(saveSettings);
             IWorkbook workbook = excelEngine.Excel.Workbooks.Open(fileStream, ExcelOpenType.Automatic);
 
+            
+            foreach (var checkbox in checkboxes)
+            {
+                IWorksheet sheet = workbook.Worksheets[checkbox.SheetIndex];
+                // Add 1 to rowIndex and colIndex because they are 0-based from client but XLSIO expects 1-based
+                ICheckBoxShape checkBox = sheet.CheckBoxes.AddCheckBox(checkbox.rowIndex + 1, checkbox.colIndex + 1, checkbox.Height, checkbox.Width);
+                checkBox.Text = checkbox.Text;
+                checkBox.CheckState = checkbox.CheckState;
+            }
 
+            // Add option buttons to the workbook
+            
+            foreach (var optionButton in optionButtons)
+            {
+                IWorksheet sheet = workbook.Worksheets[optionButton.SheetIndex];
+                // Add 1 to rowIndex and colIndex because they are 0-based from client but XLSIO expects 1-based
+                IOptionButtonShape optBtn = sheet.OptionButtons.AddOptionButton(optionButton.rowIndex + 1, optionButton.colIndex + 1, optionButton.Height, optionButton.Width);
+                optBtn.Text = optionButton.Text;
+                optBtn.CheckState = optionButton.CheckState;
+            }
 
+            // Add combo boxes to the workbook
+            
+            foreach (var comboBox in comboBoxes)
+            {
+                IWorksheet sheet = workbook.Worksheets[comboBox.SheetIndex];
+                // Add 1 to rowIndex and colIndex because they are 0-based from client but XLSIO expects 1-based
+                IComboBoxShape comboBoxShape = sheet.ComboBoxes.AddComboBox(comboBox.rowIndex + 1, comboBox.colIndex + 1, comboBox.Height, comboBox.Width);
+
+                // Set list fill range if available
+                if (!string.IsNullOrEmpty(comboBox.ListFillRange))
+                {
+                    comboBoxShape.ListFillRange = sheet[comboBox.ListFillRange];
+                }
+
+                // Set linked cell if available
+                if (!string.IsNullOrEmpty(comboBox.LinkedCell))
+                {
+                    comboBoxShape.LinkedCell = sheet[comboBox.LinkedCell];
+                }
+
+                // Set selected index
+                comboBoxShape.SelectedIndex = comboBox.SelectedIndex;
+            }
+
+            //Save the workbook with the form controls
+                // Save the workbook with the form controls
+                workbook.SaveAs("Output.xlsx");
             var saveType = saveSettings.SaveType.ToString().ToLower();
             string basePath = _env.ContentRootPath + "\\Files\\" + saveSettings.FileName + '.' + saveType;
             var file = System.IO.File.Create(basePath);
@@ -227,7 +406,7 @@ namespace WebAPI.Controllers
             fileStream.CopyTo(file);
             file.Dispose();
             fileStream.Dispose();
-            return Workbook.Save(saveSettings);
+            return String.Empty;
         }
     }
 }
