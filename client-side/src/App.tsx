@@ -1,4 +1,4 @@
-import { SpreadsheetComponent, setCell, getCell, getRowHeight, getRangeIndexes } from '@syncfusion/ej2-react-spreadsheet';
+import { SpreadsheetComponent, setCell, getCell, getRangeIndexes } from '@syncfusion/ej2-react-spreadsheet';
 import { RadioButton } from '@syncfusion/ej2-buttons';
 import { select, createElement } from '@syncfusion/ej2-base';
 import { createCheckBox } from '@syncfusion/ej2-buttons';
@@ -34,8 +34,39 @@ export default function App() {
     
   };
 
-  const beforeSave = (args: any) => {
-    // console.log(args);
+  const cellSave = (args: any) =>{
+    console.log(args.value);
+    var address = args.address.split("!")[1];
+    var addressRange = getRangeIndexes(address);
+    var sheet = spreadsheet.getActiveSheet();
+    var cell = getCell(addressRange[0], addressRange[1], sheet) as any;
+    
+    if(cell && (cell as any).formControlType) {
+      // Check which type of form control and update its Text property
+      switch((cell as any).formControlType) {
+        case 'checkbox':
+          if((cell as any).checkboxInfo) {
+            (cell as any).checkboxInfo.Text = args.value;
+            spreadsheet.resize();
+          }
+          break;
+        case 'optionbutton':
+          if((cell as any).optionButtonInfo) {
+            (cell as any).optionButtonInfo.Text = args.value;
+            spreadsheet.resize();
+          }
+          break;
+      }
+    }
+  }
+
+  const beforeCellUpdate = (args: any) =>{
+    var sheet = spreadsheet.getActiveSheet();
+    var cell = getCell(args.rowIndex, args.colIndex, sheet) as any;
+    
+    if(cell && (cell as any).formControlType && (cell as any).formControlType == "comboBox") {
+      args.cancel = true;
+    }
   }
 
   const performSave = () => {
@@ -125,6 +156,7 @@ export default function App() {
                       delete cell.formControlType;
                       delete cell.checkboxInfo;
                       delete cell.template;
+                      delete cell.value;
                       break;
                     case 'optionbutton':
                       // Add optionButtonInfo to optionButtonCol array
@@ -148,6 +180,7 @@ export default function App() {
                       delete cell.formControlType;
                       delete cell.optionButtonInfo;
                       delete cell.template;
+                      delete cell.value;
                       break;
                     case 'comboBox':
                       // Add comboBoxInfo to comboBoxCol array
@@ -163,6 +196,7 @@ export default function App() {
                       delete cell.formControlType;
                       delete cell.comboBoxInfo;
                       delete cell.template;
+                      delete cell.value;
                       break;
                   }
                 }
@@ -390,8 +424,9 @@ export default function App() {
         ref={(ssObj: any) => { spreadsheet = ssObj; }}
         created={onCreated}
         openComplete={openComplete}
+        cellSave = {cellSave}
+        beforeCellUpdate = {beforeCellUpdate}
         beforeCellRender={handleBeforeCellRender}
-        beforeSave={beforeSave}
         height='600px'
       >
       </SpreadsheetComponent>
