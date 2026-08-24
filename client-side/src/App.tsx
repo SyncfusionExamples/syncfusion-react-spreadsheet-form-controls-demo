@@ -189,7 +189,7 @@ export default function App() {
       // Add PDF layout settings, even though this is for Excel export
       formData.append('pdfLayoutSettings', JSON.stringify({ fitSheetOnOnePage: false, orientation: 'Portrait' }));
       // Send a POST request to Syncfusion's save API
-      fetch('https://localhost:44341/api/spreadsheet/save', { method: 'POST', body: formData }).then((response) => {
+      fetch(saveArgs.url as string, { method: 'POST', body: formData }).then((response) => {
         response.blob().then((data) => {
           // Saving the file in the local machine inside default download location.
           const anchor: any = createElement('a', { attrs: { download: saveArgs.fileName + '.xlsx' } });
