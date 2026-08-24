@@ -2,7 +2,7 @@
 
 ## Overview
 
-This sample demonstrates a proof-of-concept workaround for importing and exporting Excel files containing form controls in the React Spreadsheet component.
+This sample demonstrates a proof-of-concept workaround for importing and exporting Excel files containing form controls in the [React Spreadsheet Component](https://www.syncfusion.com/spreadsheet-editor-sdk/react-spreadsheet-editor).
 
 The solution preserves the following Excel form controls during both import and export operations:
 
@@ -11,6 +11,16 @@ The solution preserves the following Excel form controls during both import and 
 - Combo Boxes
 
 Using a combination of client-side and server-side processing, form controls are extracted from the Excel workbook, rendered within the Spreadsheet, tracked during user interaction, and recreated when the workbook is exported.
+
+## Prerequisites:
+
+Before implementing this solution, ensure that:
+
+- [React Spreadsheet](https://www.syncfusion.com/spreadsheet-editor-sdk/react-spreadsheet-editor) is configured in your application.
+- Spreadsheet Open and Save APIs are available on the server.
+- [XlsIO package](https://www.nuget.org/packages/Syncfusion.EJ2.Spreadsheet.AspNet.Core) is installed and configured on the server.
+- Node.js (Latest LTS version recommended)
+- npm
 
 ---
 
@@ -41,20 +51,13 @@ This ensures that all supported form controls are preserved in the exported Exce
 
 ---
 
-## Supported Form Controls
+## Supported Form Controls in this Workaround Solution
 
 The sample currently supports the following Excel form controls:
 
 - Check Box
 - Option Button
 - Combo Box
-
----
-
-## Prerequisites
-
-- Node.js (Latest LTS version recommended)
-- npm
 
 ---
 
@@ -88,8 +91,9 @@ Run the server project using your preferred method, such as:
 
 ---
 
-## Notes
+## Limitation
 
 - This sample is provided as a proof-of-concept workaround.
+- Not all the form controls are supported in this approach.
 - Form controls are maintained through custom client-side and server-side processing.
-- The solution uses the XlsIO library to extract and recreate form controls during import and export operations.
+- The solution uses the [XlsIO library](https://help.syncfusion.com/document-processing/excel/excel-library/net/create-read-edit-excel-files-in-asp-net-core-c-sharp) to extract and recreate form controls during import and export operations.
