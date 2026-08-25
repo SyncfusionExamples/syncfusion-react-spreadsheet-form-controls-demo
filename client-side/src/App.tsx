@@ -46,13 +46,9 @@ export default function App() {
     }
   }
 
-  const updateFormControlToCell = (template: string, model: { Top: number, Left: number, SheetIndex: number, CheckState?: boolean | number }): void => {
-    const rowArgs: { clientY: number, isImage: boolean, isCheckDPR: boolean } = { clientY: model.Top, isImage: true, isCheckDPR: true };
-    spreadsheet.notify('getRowIdxFromClientY', rowArgs);
-    const colArgs: { clientX: number, isImage: boolean } = { clientX: model.Left, isImage: true };
-    spreadsheet.notify('getColIdxFromClientX', colArgs);
+  const updateFormControlToCell = (template: string, model: { RowIndex: number, ColIndex: number, SheetIndex: number, CheckState?: boolean | number }): void => {
     const sheet: SheetModel = spreadsheet.sheets[model.SheetIndex];
-    setCell(rowArgs.clientY, colArgs.clientX, sheet, { template: template, formControl: model } as any, true);
+    setCell(model.RowIndex, model.ColIndex, sheet, { template: template, formControl: model } as any, true);
   };
 
   // To render the Radio button.
