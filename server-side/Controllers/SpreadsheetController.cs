@@ -79,11 +79,11 @@ namespace WebAPI.Controllers
                     for (int j = 0; j < checkBoxes.Count; j++)
                     {
                         ICheckBoxShape checkBox = checkBoxes[j];
-                        ShapeImpl checkboxShape = (ShapeImpl)checkBox;
+                        ShapeImpl checkboxShapeImpl = (ShapeImpl)checkBox;
                         CheckBoxShape CheckBoxShape = new CheckBoxShape
                         {
-                            RowIndex = (int)checkboxShape.TopRow - 1,
-                            ColIndex = (int)checkboxShape.LeftColumn - 1,
+                            RowIndex = (int)checkboxShapeImpl.TopRow - 1,
+                            ColIndex = (int)checkboxShapeImpl.LeftColumn - 1,
                             Height = (int)checkBox.Height,
                             Width = (int)checkBox.Width,
                             CheckState = checkBox.CheckState,
@@ -103,11 +103,11 @@ namespace WebAPI.Controllers
                     for (int j = 0; j < optionButtons.Count; j++)
                     {
                         IOptionButtonShape optionButton = optionButtons[j];
-                        ShapeImpl optionButtonShape = (ShapeImpl)optionButton;
+                        ShapeImpl optionButtonShapeImpl = (ShapeImpl)optionButton;
                         OptionButtonShape OptionButtonShape = new OptionButtonShape
                         {
-                            RowIndex = (int)optionButtonShape.TopRow - 1,
-                            ColIndex = (int)optionButtonShape.LeftColumn - 1,
+                            RowIndex = (int)optionButtonShapeImpl.TopRow - 1,
+                            ColIndex = (int)optionButtonShapeImpl.LeftColumn - 1,
                             Height = (int)optionButton.Height,
                             Width = (int)optionButton.Width,
                             CheckState = optionButton.CheckState,
@@ -126,11 +126,11 @@ namespace WebAPI.Controllers
                     for (int j = 0; j < comboBoxes.Count; j++)
                     {
                         IComboBoxShape comboBox = comboBoxes[j];
-                        ShapeImpl comboBoxShape = (ShapeImpl)comboBox;
+                        ShapeImpl comboBoxShapeImpl = (ShapeImpl)comboBox;
                         ComboBoxShape ComboBoxShape = new ComboBoxShape
                         {
-                            RowIndex = (int)comboBoxShape.TopRow - 1,
-                            ColIndex = (int)comboBoxShape.LeftColumn - 1,
+                            RowIndex = (int)comboBoxShapeImpl.TopRow - 1,
+                            ColIndex = (int)comboBoxShapeImpl.LeftColumn - 1,
                             Height = (int)comboBox.Height,
                             Width = (int)comboBox.Width,
                             SelectedIndex = comboBox.SelectedIndex,
