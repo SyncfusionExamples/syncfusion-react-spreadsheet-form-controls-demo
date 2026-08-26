@@ -1,12 +1,8 @@
-﻿using Microsoft.AspNetCore.Cors;
-using Microsoft.AspNetCore.Http;
+﻿using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Syncfusion.EJ2.Spreadsheet;
 using Syncfusion.XlsIO;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text.Json;
+using Syncfusion.XlsIO.Implementation.Shapes;
 
 namespace WebAPI.Controllers
 {
@@ -77,10 +73,11 @@ namespace WebAPI.Controllers
                     for (int j = 0; j < checkBoxes.Count; j++)
                     {
                         ICheckBoxShape checkBox = checkBoxes[j];
+                        ShapeImpl checkboxShapeImpl = (ShapeImpl)checkBox;
                         CheckBoxShape CheckBoxShape = new CheckBoxShape
                         {
-                            Top = (int)checkBox.Top,
-                            Left = (int)checkBox.Left,
+                            RowIndex = (int)checkboxShapeImpl.TopRow - 1,
+                            ColIndex = (int)checkboxShapeImpl.LeftColumn - 1,
                             Height = (int)checkBox.Height,
                             Width = (int)checkBox.Width,
                             CheckState = checkBox.CheckState,
@@ -100,10 +97,11 @@ namespace WebAPI.Controllers
                     for (int j = 0; j < optionButtons.Count; j++)
                     {
                         IOptionButtonShape optionButton = optionButtons[j];
+                        ShapeImpl optionButtonShapeImpl = (ShapeImpl)optionButton;
                         OptionButtonShape OptionButtonShape = new OptionButtonShape
                         {
-                            Top = (int)optionButton.Top,
-                            Left = (int)optionButton.Left,
+                            RowIndex = (int)optionButtonShapeImpl.TopRow - 1,
+                            ColIndex = (int)optionButtonShapeImpl.LeftColumn - 1,
                             Height = (int)optionButton.Height,
                             Width = (int)optionButton.Width,
                             CheckState = optionButton.CheckState,
@@ -122,10 +120,11 @@ namespace WebAPI.Controllers
                     for (int j = 0; j < comboBoxes.Count; j++)
                     {
                         IComboBoxShape comboBox = comboBoxes[j];
+                        ShapeImpl comboBoxShapeImpl = (ShapeImpl)comboBox;
                         ComboBoxShape ComboBoxShape = new ComboBoxShape
                         {
-                            Top = (int)comboBox.Top,
-                            Left = (int)comboBox.Left,
+                            RowIndex = (int)comboBoxShapeImpl.TopRow - 1,
+                            ColIndex = (int)comboBoxShapeImpl.LeftColumn - 1,
                             Height = (int)comboBox.Height,
                             Width = (int)comboBox.Width,
                             SelectedIndex = comboBox.SelectedIndex,
@@ -308,8 +307,6 @@ namespace WebAPI.Controllers
 
         public class CheckBoxShape
         {
-            public int Top { get; set; }
-            public int Left { get; set; }
             public int Height { get; set; }
             public int Width { get; set; }
             public ExcelCheckState CheckState { get; set; }
@@ -321,8 +318,6 @@ namespace WebAPI.Controllers
 
         public class OptionButtonShape
         {
-            public int Top { get; set; }
-            public int Left { get; set; }
             public int Height { get; set; }
             public int Width { get; set; }
             public ExcelCheckState CheckState { get; set; }
@@ -334,8 +329,6 @@ namespace WebAPI.Controllers
 
         public class ComboBoxShape
         {
-            public int Top { get; set; }
-            public int Left { get; set; }
             public int Height { get; set; }
             public int Width { get; set; }
             public int SelectedIndex { get; set; }
