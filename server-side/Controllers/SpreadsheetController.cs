@@ -1,11 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text.Json;
-using Microsoft.AspNetCore.Cors;
-using Microsoft.AspNetCore.Http;
+﻿using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
-using Syncfusion.EJ2.Buttons;
 using Syncfusion.EJ2.Spreadsheet;
 using Syncfusion.XlsIO;
 using Syncfusion.XlsIO.Implementation.Shapes;
