@@ -1,16 +1,1 @@
-/* Spreadsheet App Styles */
-.app-container {
-  padding: 10px;
-  margin: 0 auto;
-}
-
-.app-header {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 10px;
-  color: var(--text-h);
-}
-
-.container {
-  height: calc(100vh - 74px);
-}
+@import '../node_modules/@syncfusion/ej2-tailwind3-theme/styles/spreadsheet/index.css';
