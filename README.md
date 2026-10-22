@@ -2,12 +2,15 @@
 
 ## Overview
 
-This is a simplified React Spreadsheet Component application that demonstrates basic spreadsheet functionality using the [Syncfusion React Spreadsheet Editor](https://www.syncfusion.com/spreadsheet-editor-sdk/react-spreadsheet-editor).
+This is a simplified React Spreadsheet Component application that demonstrates spreadsheet's form control functionality using the [Syncfusion React Spreadsheet Editor](https://www.syncfusion.com/spreadsheet-editor-sdk/react-spreadsheet-editor).
 
-The application allows users to:
-- Open and edit Excel files
-- Save changes back to Excel format
-- Use the Syncfusion production API endpoints for file operations
+The implementation includes support for:
+- Form Control (Check Box, Combo Box (Drop-Down), and Option Button (Radio Button) ) import and export
+-	Client-side overlay rendering
+-	Editing and resizing
+-	Drag-and-drop interactions
+-	Copy, cut, and paste operations
+-	Form Control properties such as Cell Link, Input Range, Caption, and Alt Text, where applicable
 
 ## Prerequisites
 
@@ -35,14 +38,9 @@ Start the React development server:
 npm run dev
 ```
 
-The application will start and you can access it in your browser. The Spreadsheet component is configured to use Syncfusion's production API endpoints for opening and saving files.
+The application will start and you can access it in your browser. The Spreadsheet component is configured to use Syncfusion's Demo API endpoints for opening and saving files.
 
-### File Operations
-
-- **Open**: Click the open button to select and open an Excel file
-- **Save**: Click the save button to save your changes back to an Excel file
-
-The application uses the following Syncfusion production API endpoints:
+The application uses the following Syncfusion Demo API endpoints:
 - Open URL: `https://services.syncfusion.com/angular/production/api/spreadsheet/open`
 - Save URL: `https://services.syncfusion.com/angular/production/api/spreadsheet/save`
 
@@ -66,9 +64,3 @@ The application uses the following Syncfusion production API endpoints:
 - Synchronized open/save operations with Syncfusion APIs
 - Full spreadsheet editing capabilities via the Syncfusion Spreadsheet component
 - No custom form control handling or event processing
-
-## Notes
-
-- The application relies on Syncfusion's production API for all file operations
-- Internet connectivity is required to access the Syncfusion API endpoints
-- All spreadsheet functionality is provided by the Syncfusion React Spreadsheet Component
