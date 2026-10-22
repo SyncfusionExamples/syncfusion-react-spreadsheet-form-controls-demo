@@ -44,6 +44,16 @@ The application uses the following Syncfusion Demo API endpoints:
 - Open URL: `https://services.syncfusion.com/angular/production/api/spreadsheet/open`
 - Save URL: `https://services.syncfusion.com/angular/production/api/spreadsheet/save`
 
+## Sample Files
+
+A sample Excel file (`formControls.xlsx`) is included in the repository with pre-configured form controls (checkboxes, radio buttons, and combo boxes). You can use this file to:
+
+1. Open the file in the application using the "Open" button
+2. Interact with the form controls
+3. Make changes and save the file using the "Save" button
+
+This sample file demonstrates the form control functionality supported by the Spreadsheet component.
+
 ## Project Structure
 
 ```
@@ -55,6 +65,7 @@ The application uses the following Syncfusion Demo API endpoints:
 │   │   └── main.tsx         # Application entry point
 │   ├── package.json         # Dependencies and scripts
 │   └── vite.config.ts       # Vite configuration
+├── formControls.xlsx        # Sample Excel file with form controls
 └── README.md                # This file
 ```
 
@@ -63,4 +74,4 @@ The application uses the following Syncfusion Demo API endpoints:
 - Clean, minimal spreadsheet UI
 - Synchronized open/save operations with Syncfusion APIs
 - Full spreadsheet editing capabilities via the Syncfusion Spreadsheet component
-- No custom form control handling or event processing
+- Support for form control import and export (Checkboxes, Radio Buttons, Combo Boxes)
