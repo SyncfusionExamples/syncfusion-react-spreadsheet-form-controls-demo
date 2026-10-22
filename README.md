@@ -38,11 +38,7 @@ Start the React development server:
 npm run dev
 ```
 
-The application will start and you can access it in your browser. The Spreadsheet component is configured to use Syncfusion's Demo API endpoints for opening and saving files.
-
-The application uses the following Syncfusion Demo API endpoints:
-- Open URL: `https://services.syncfusion.com/angular/production/api/spreadsheet/open`
-- Save URL: `https://services.syncfusion.com/angular/production/api/spreadsheet/save`
+The application will start and you can access it in your browser. You can then open the sample Excel file and interact with the form controls.
 
 ## Sample Files
 
