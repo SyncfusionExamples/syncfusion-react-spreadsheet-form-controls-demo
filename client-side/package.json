@@ -10,7 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@syncfusion/ej2-react-spreadsheet": "^34.2.4",
+    "@syncfusion/ej2-react-spreadsheet": "^35.1.41",
+    "@syncfusion/ej2-tailwind3-theme": "*",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
